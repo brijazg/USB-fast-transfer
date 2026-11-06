@@ -41,7 +41,7 @@ public sealed class MainForm : Form
         var subtitle = new Label { Text = "Fast, monitored file copying for USB drives", AutoSize = true, ForeColor = Color.DimGray };
         var sourceLabel = new Label { Text = "Source", AutoSize = true, Font = new Font(Font, FontStyle.Bold) };
         var driveLabel = new Label { Text = "USB destination", AutoSize = true, Font = new Font(Font, FontStyle.Bold) };
-        var sourceRow = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true };
+        var sourceRow = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false };
         sourceRow.Controls.Add(sourceBox); sourceRow.Controls.Add(fileButton); sourceRow.Controls.Add(folderButton);
         var driveRow = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false };
         driveRow.Controls.Add(driveBox);
@@ -131,13 +131,15 @@ public sealed class MainForm : Form
         if (sourceRoot != null)
         {
             var sourceFull = Path.GetFullPath(sourceRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (targetRoot.StartsWith(sourceFull, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Path.GetPathRoot(sourceFull), targetRoot, StringComparison.OrdinalIgnoreCase) ||
+                targetRoot.StartsWith(sourceFull, StringComparison.OrdinalIgnoreCase))
             { MessageBox.Show(this, "Choose a destination outside the selected source folder."); return; }
         }
         if (items.Any(x => string.Equals(Path.GetFullPath(x.Source), Path.GetFullPath(Path.Combine(targetRoot, x.Relative)), StringComparison.OrdinalIgnoreCase)))
         { MessageBox.Show(this, "Source and destination resolve to the same file. Choose another USB drive."); return; }
 
-        if (SafeFree(new DriveInfo(targetRoot)) < totalBytes)
+        var required = totalBytes;
+        if (SafeFree(new DriveInfo(targetRoot)) < required)
         { MessageBox.Show(this, "The USB drive may not have enough free space."); return; }
 
         if (MessageBox.Show(this, $"Copy {items.Count} file(s) ({FormatBytes(totalBytes)}) to {targetRoot}?\nFiles with the same names will be overwritten.", "Confirm transfer", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
@@ -232,7 +234,6 @@ public sealed class MainForm : Form
         if (InvokeRequired) { BeginInvoke(new Action(() => UpdateProgressUi(percent))); return; }
         UpdateProgressUi(percent);
     }
-
     private void UpdateProgressUi(int percent)
     {
         progress.Value = percent;
